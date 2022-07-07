@@ -21,37 +21,47 @@ subprocess.Popen(["clang","-S","-emit-llvm","-c", path_str], stdout=subprocess.P
 with open('gsm.ll') as f:
     lines = f.read()
     llvmir=llvmlite.binding.parse_assembly(lines, context=None)
+    print("___________________________print all functions___________________________")
+    print("Functions in the c-code: ")
+    for i in llvmir.functions:
+        print(i.name)
     print("__________________________main function llvmir___________________________")
-    main_llvmir=llvmir.get_function("main")
+    main_llvmir=llvmir.get_function("main")#Quantization_and_coding
     #print(main_llvmir)
     print("______________________basic blocks of main function______________________")
     main_blocklist=[]
-    main_instructionlist= [[] for i in range(100)]
+    main_instructionlist= [[] for i in range(100)] #todo 13 zu auto
+    main_operandslist= [[[] for i in range(100)]for j in range(100)]
     for i,y in enumerate(main_llvmir.blocks):
         ################# all data of basic block ########################
         #print(y.linkage)
         main_blocklist.append(y)
         ################# single data of basic block ########################
-        for j in y.instructions:
+        for z,j in enumerate(y.instructions):
             #print(j)
             main_instructionlist[i].append(j)
-            #for k in j.operands:
+            for k in j.operands:
+                main_operandslist[i][z].append(k)
                 #print(k)
-    print("___________________________first basic block_____________________________")
+    print("___________________________1. and 2. basic block__________________________")
 
-    print(main_blocklist[0])
     print(main_blocklist[1])
 
-    print("____________________branch of first basic block__________________________")
-    print(main_instructionlist[0][-1])
-    print(main_instructionlist[1][-1])
-    print(main_instructionlist[2][-1])
+    print("________________________________find loops________________________________")
+    for i in range(len(main_blocklist)):
+        print("__________")
+        blockid_char_raw=str(main_blocklist[i]).partition(":")
+        blockid_char=blockid_char_raw[0][1:]
+        if i ==0:
+            blockid_char=0
+        print("Basic Block: ",blockid_char)
+        print(str(main_instructionlist[i][-1]))
+        if(str(main_instructionlist[i][-1])[5]=="i"):
+            print("loop detected!!!!!!!!!!!")
+        for j in range(len(main_instructionlist[i])):
+            instructions_char_raw = str(main_instructionlist[i][j]).partition(",")
+            print(instructions_char_raw[0])
 
-
-    print("___________________________print all functions___________________________")
-    print("Functions in the c-code: ")
-    for i in llvmir.functions:
-        print(i.name)
     print("_________________________________________________________________________")
 
     ########### create control flow graph ###########

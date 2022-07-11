@@ -3,6 +3,8 @@
 import subprocess
 import llvmlite.binding
 import argparse
+import xml.etree.ElementTree
+from create_xml import createxmltemplate,createxmlnode_operation,createxmlnode_inoutport,createxmlnode_constant,createxmledge,completexmlfile
 
 ########### parse arguments to the script ###########
 parser = argparse.ArgumentParser(description='This is a script to automatically generate llvmir from c-code')
@@ -19,6 +21,7 @@ if path_str == None:
 subprocess.Popen(["clang","-S","-emit-llvm","-c", path_str], stdout=subprocess.PIPE)
 
 with open('gsm.ll') as f:
+    xmlfile = createxmltemplate()
     lines = f.read()
     llvmir=llvmlite.binding.parse_assembly(lines, context=None)
     print("___________________________print all functions___________________________")
@@ -46,10 +49,19 @@ with open('gsm.ll') as f:
     print("___________________________1. and 2. basic block__________________________")
 
     print(main_blocklist[1])
+    print(main_blocklist[2])
+    print(main_blocklist[3])
+
+
 
     print("________________________________find loops________________________________")
+    addition_inputs=[]
+    addition_outputs=[]
+    addition_nodelist=[]
+    constant_nodelist=[]
+
     for i in range(len(main_blocklist)):
-        print("__________")
+        print("______________________________")
         blockid_char_raw=str(main_blocklist[i]).partition(":")
         blockid_char=blockid_char_raw[0][1:]
         if i ==0:
@@ -60,11 +72,43 @@ with open('gsm.ll') as f:
             print("loop detected!!!!!!!!!!!")
         for j in range(len(main_instructionlist[i])):
             instructions_char_raw = str(main_instructionlist[i][j]).partition(",")
-            print(instructions_char_raw[0])
+            if "add" in instructions_char_raw[0]:
+                operation_first_node_partitions=instructions_char_raw[0].rpartition("%")
+                addition_inputs.append([operation_first_node_partitions[2],instructions_char_raw[2]])
+                if "%" not in (instructions_char_raw[2]):
+                    xmlfile += createxmlnode_constant('Constant','Constant'+str(1000+j),(1000+j),int(instructions_char_raw[2]))
+                    print(j)
+                    constant_nodelist.append(1000+j)
 
+                addition_node=instructions_char_raw[0].partition("=")[0].partition("%")[2]
+                addition_outputs.append(blockid_char)
+                addition_nodelist.append(int(addition_node))
+
+                xmlfile += createxmlnode_operation('Sum', 'Sum'+str(int(addition_node)), int(addition_node), "[2, 1]")
+                print(instructions_char_raw[0])
+                print("Addition!!!!!!!!!!")
+
+    print("_____________________________node list___________________________________")
+    print("constant_nodelist",constant_nodelist)
+    print("addition_nodelist",addition_nodelist)
+    print("addition_inputs",addition_inputs)
+    print("addition_outputs",addition_outputs)
+
+    for i in addition_inputs:
+        xmlfile += createxmlnode_inoutport('Outport','Out'+str(i),i,i)
+    for i in addition_inputs:
+        xmlfile += createxmlnode_inoutport('Inport', 'In' + str(i), i, i)
     print("_________________________________________________________________________")
 
     ########### create control flow graph ###########
     cfg=llvmlite.binding.get_function_cfg(main_llvmir, show_inst=True)
     ########### show cfg and save it ###########
     #llvmlite.binding.view_dot_graph(cfg, filename=None, view=True)
+
+    print("________________________________create xml_______________________________")
+    xmlfile += completexmlfile()
+    #print(xmlfile)
+    file = open('gsm.xml', 'w')
+    file.write(xmlfile)
+    file.close()
+

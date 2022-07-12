@@ -1,4 +1,4 @@
-from create_xml import createxmltemplate,createxmlnode_operation,createxmlnode_inoutport,createxmlnode_constant,createxmledge,completexmlfile
+from ctoxmlbase import createxmltemplate,createxmlnode_operation,createxmlnode_inoutport,createxmlnode_constant,createxmledge,completexmlfile
 
 print("________________________________create xml_______________________________")
 xmlfile = createxmltemplate()
@@ -23,3 +23,5 @@ print(xmlfile)
 file = open('gsm_test.xml', 'w')
 file.write(xmlfile)
 file.close()
+
+

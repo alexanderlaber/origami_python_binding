@@ -4,7 +4,7 @@ import subprocess
 import llvmlite.binding
 import argparse
 import xml.etree.ElementTree
-from create_xml import createxmltemplate,createxmlnode_operation,createxmlnode_inoutport,createxmlnode_constant,createxmledge,completexmlfile
+from ctoxmlbase import createxmltemplate,createxmlnode_operation,createxmlnode_inoutport,createxmlnode_constant,createxmledge,completexmlfile
 
 ########### parse arguments to the script ###########
 parser = argparse.ArgumentParser(description='This is a script to automatically generate llvmir from c-code')
@@ -59,13 +59,13 @@ with open('gsm.ll') as f:
     addition_outputs=[]
     addition_nodelist=[]
     constant_nodelist=[]
-
+    newnode_counter=0
     for i in range(len(main_blocklist)):
         print("______________________________")
         blockid_char_raw=str(main_blocklist[i]).partition(":")
         blockid_char=blockid_char_raw[0][1:]
         if i ==0:
-            blockid_char=0
+            blockid_char="0"
         print("Basic Block: ",blockid_char)
         print(str(main_instructionlist[i][-1]))
         if(str(main_instructionlist[i][-1])[5]=="i"):
@@ -74,17 +74,19 @@ with open('gsm.ll') as f:
             instructions_char_raw = str(main_instructionlist[i][j]).partition(",")
             if "add" in instructions_char_raw[0]:
                 operation_first_node_partitions=instructions_char_raw[0].rpartition("%")
-                addition_inputs.append([operation_first_node_partitions[2],instructions_char_raw[2]])
                 if "%" not in (instructions_char_raw[2]):
-                    xmlfile += createxmlnode_constant('Constant','Constant'+str(1000+j),(1000+j),int(instructions_char_raw[2]))
-                    print(j)
-                    constant_nodelist.append(1000+j)
+                    xmlfile += createxmlnode_constant('Constant','Constant'+str(1000+newnode_counter),(1000+newnode_counter),instructions_char_raw[2])
+                    constant_nodelist.append(1000+newnode_counter)
+                    addition_inputs.append([operation_first_node_partitions[2], str(1000+newnode_counter)])
+                    newnode_counter += 1
+                else:
+                    addition_inputs.append([operation_first_node_partitions[2], instructions_char_raw[2].partition("%")[2]])
 
-                addition_node=instructions_char_raw[0].partition("=")[0].partition("%")[2]
-                addition_outputs.append(blockid_char)
-                addition_nodelist.append(int(addition_node))
+                addition_node=int(instructions_char_raw[0].partition("=")[0].partition("%")[2])
+                addition_outputs.append(str(main_instructionlist[i][-1]).partition("%")[2])
+                addition_nodelist.append(str(addition_node))
 
-                xmlfile += createxmlnode_operation('Sum', 'Sum'+str(int(addition_node)), int(addition_node), "[2, 1]")
+                xmlfile += createxmlnode_operation('Sum', 'Sum'+str(addition_node), addition_node, "[2, 1]")
                 print(instructions_char_raw[0])
                 print("Addition!!!!!!!!!!")
 
@@ -94,10 +96,17 @@ with open('gsm.ll') as f:
     print("addition_inputs",addition_inputs)
     print("addition_outputs",addition_outputs)
 
-    for i in addition_inputs:
+    for i in addition_outputs:
         xmlfile += createxmlnode_inoutport('Outport','Out'+str(i),i,i)
-    for i in addition_inputs:
-        xmlfile += createxmlnode_inoutport('Inport', 'In' + str(i), i, i)
+    for j,i in enumerate(addition_inputs):
+        xmlfile += createxmlnode_inoutport('Inport', 'In' + str(i[0]), i[0], i[0])
+        if int(i[1]) not in constant_nodelist:
+            xmlfile += createxmlnode_inoutport('Inport', 'In' + str(i[1]), i[1], i[1])
+        xmlfile += createxmledge(i[0]+'#out:1', str(addition_nodelist[j])+'#in:1')
+        xmlfile += createxmledge(i[1]+'#out:1', str(addition_nodelist[j])+'#in:2')
+    for j,i in enumerate(addition_nodelist):
+        xmlfile += createxmledge(i+'#out:1', addition_outputs[j]+'#in:1')
+
     print("_________________________________________________________________________")
 
     ########### create control flow graph ###########

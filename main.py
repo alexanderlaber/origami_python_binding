@@ -6,6 +6,6 @@ if __name__ == "__main__":
     libname = "liborigami_graphsAndAlgorithms.a"
     c_lib = ctypes.CDLL(libname)
     x, y = 6, 2.3
-    answer = c_lib.graph.parseDirectedGraphFromgraphml("/Users/alaber/origami/examples/graphMLBenchmarks/randomgraphs/1")
+    answer = c_lib.SubGrEnumeration.enumerate(s,2,greedy,3)
     #c_lib.printInfo()
 
